@@ -7,7 +7,7 @@
 WireGuard is a point-to-point VPN that can be used in different ways. Here, we mean a VPN as in: the client will forward all its traffic trough an encrypted tunnel to the server.
 The server will apply NAT to the client's traffic so it will appear as if the client is browsing the web with the server's IP.
 
-The script supports both IPv4 and IPv6. Please check the [issues](https://github.com/angristan/wireguard-install/issues) for ongoing development, bugs and planned features!
+The script supports both IPv4 and IPv6. Please check the [issues](https://github.com/IgorKha/wireguard-mikrotik/issues) for ongoing development, bugs and planned features!
 
 Part of this script based on [this repo](https://github.com/angristan/wireguard-install)
 
