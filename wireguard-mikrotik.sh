@@ -4,39 +4,88 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 INFO="${BLUE}[i]${NC}"
 
-function isRoot() {
-	if [ "${EUID}" -ne 0 ]; then
-		echo "You need to run this script as root"
-		exit 1
-	fi
-}
+function installWireGuard() {
 
-function checkOS() {
-	# Check OS version
-	if [[ -e /etc/debian_version ]]; then
+    #? Check root user
+    if [ "${EUID}" -ne 0 ]; then
+		echo "You need to run this script as root"
+		exit 13
+	fi
+
+    #? Check OS version
+    if [[ -e /etc/debian_version ]]; then
+        # shellcheck source=/dev/null
 		source /etc/os-release
 		OS="${ID}" # debian or ubuntu
 		if [[ ${ID} == "debian" || ${ID} == "raspbian" ]]; then
 			if [[ ${VERSION_ID} -lt 10 ]]; then
 				echo "Your version of Debian (${VERSION_ID}) is not supported. Please use Debian 10 Buster or later"
-				exit 1
+				exit 95
 			fi
-			OS=debian # overwrite if raspbian
+			OS=debian #* overwrite if raspbian
 		fi
 	elif [[ -e /etc/fedora-release ]]; then
+        # shellcheck source=/dev/null
 		source /etc/os-release
 		OS="${ID}"
 	elif [[ -e /etc/centos-release ]]; then
+        # shellcheck source=/dev/null
 		source /etc/os-release
 		OS=centos
 	elif [[ -e /etc/oracle-release ]]; then
+        # shellcheck source=/dev/null
 		source /etc/os-release
 		OS=oracle
 	elif [[ -e /etc/arch-release ]]; then
 		OS=arch
 	else
 		echo "Looks like you aren't running this installer on a Debian, Ubuntu, Fedora, CentOS, Oracle or Arch Linux system"
-		exit 1
+		exit 95
+	fi
+    
+	#? Install WireGuard tools and module
+	if [[ ${OS} == 'ubuntu' ]] || [[ ${OS} == 'debian' && ${VERSION_ID} -gt 10 ]]; then
+		apt-get update
+		apt-get install -y wireguard qrencode
+	elif [[ ${OS} == 'debian' ]]; then
+		if ! grep -rqs "^deb .* buster-backports" /etc/apt/; then
+			echo "deb http://deb.debian.org/debian buster-backports main" >/etc/apt/sources.list.d/backports.list
+			apt-get update
+		fi
+		apt update
+		apt-get install -y qrencode
+		apt-get install -y -t buster-backports wireguard
+	elif [[ ${OS} == 'fedora' ]]; then
+		if [[ ${VERSION_ID} -lt 32 ]]; then
+			dnf install -y dnf-plugins-core
+			dnf copr enable -y jdoss/wireguard
+			dnf install -y wireguard-dkms
+		fi
+		dnf install -y wireguard-tools qrencode
+	elif [[ ${OS} == 'centos' ]]; then
+		yum -y install epel-release elrepo-release
+		if [[ ${VERSION_ID} -eq 7 ]]; then
+			yum -y install yum-plugin-elrepo
+		fi
+		yum -y install kmod-wireguard wireguard-tools qrencode
+	elif [[ ${OS} == 'oracle' ]]; then
+		dnf install -y oraclelinux-developer-release-el8
+		dnf config-manager --disable -y ol8_developer
+		dnf config-manager --enable -y ol8_developer_UEKR6
+		dnf config-manager --save -y --setopt=ol8_developer_UEKR6.includepkgs='wireguard-tools*'
+		dnf install -y wireguard-tools qrencode
+	elif [[ ${OS} == 'arch' ]]; then
+		pacman -Sq --needed --noconfirm wireguard-tools qrencode
+	fi
+
+}
+
+function installCheck() {
+	if ! command -v wg &> /dev/null
+	then
+	    echo "You must have \"wireguard-tools\" and \"qrencode\" installed."
+    	read -n1 -r -p "Press any key to continue and install needed packages..."
+		installWireGuard
 	fi
 }
 
@@ -44,12 +93,6 @@ function serverName() {
 	until [[ ${SERVER_WG_NIC} =~ ^[a-zA-Z0-9_]+$ && ${#SERVER_WG_NIC} -lt 16 ]]; do
             read -rp "WireGuard interface name (server name): " -e -i wg0 SERVER_WG_NIC
     done
-}
-
-function initialCheck() {
-	isRoot
-	checkOS
-    serverName
 }
 
 function installQuestions() {
@@ -68,16 +111,12 @@ function installQuestions() {
     fi
     read -rp "IPv4 or IPv6 public address: " -e -i "${SERVER_PUB_IP}" SERVER_PUB_IP
 
-    # until [[ ${SERVER_WG_NIC} =~ ^[a-zA-Z0-9_]+$ && ${#SERVER_WG_NIC} -lt 16 ]]; do
-    #         read -rp "WireGuard interface name: " -e -i wg0 SERVER_WG_NIC
-    # done
-
     until [[ ${SERVER_WG_IPV4} =~ ^([0-9]{1,3}\.){3} ]]; do
-        read -rp "Server's WireGuard IPv4: " -e -i 10.66.66.1 SERVER_WG_IPV4
+        read -rp "Server's WireGuard IPv4: " -e -i 10."$(shuf -i 0-250 -n 1)"."$(shuf -i 0-250 -n 1)".1 SERVER_WG_IPV4
     done
 
     until [[ ${SERVER_WG_IPV6} =~ ^([a-f0-9]{1,4}:){3,4}: ]]; do
-        read -rp "Server's WireGuard IPv6: " -e -i fd42:42:42::1 SERVER_WG_IPV6
+        read -rp "Server's WireGuard IPv6: " -e -i fd42:"$(shuf -i 10-90 -n 1)":"$(shuf -i 10-90 -n 1)"::1 SERVER_WG_IPV6
     done
 
     # Generate random number within private ports range
@@ -104,44 +143,9 @@ function installQuestions() {
 
 }
 
-function installWireGuard() {
+function newInterface() {
 	# Run setup questions first
 	installQuestions
-
-	# Install WireGuard tools and module
-	if [[ ${OS} == 'ubuntu' ]] || [[ ${OS} == 'debian' && ${VERSION_ID} -gt 10 ]]; then
-		apt-get update
-		apt-get install -y wireguard iptables resolvconf qrencode
-	elif [[ ${OS} == 'debian' ]]; then
-		if ! grep -rqs "^deb .* buster-backports" /etc/apt/; then
-			echo "deb http://deb.debian.org/debian buster-backports main" >/etc/apt/sources.list.d/backports.list
-			apt-get update
-		fi
-		apt update
-		apt-get install -y iptables resolvconf qrencode
-		apt-get install -y -t buster-backports wireguard
-	elif [[ ${OS} == 'fedora' ]]; then
-		if [[ ${VERSION_ID} -lt 32 ]]; then
-			dnf install -y dnf-plugins-core
-			dnf copr enable -y jdoss/wireguard
-			dnf install -y wireguard-dkms
-		fi
-		dnf install -y wireguard-tools iptables qrencode
-	elif [[ ${OS} == 'centos' ]]; then
-		yum -y install epel-release elrepo-release
-		if [[ ${VERSION_ID} -eq 7 ]]; then
-			yum -y install yum-plugin-elrepo
-		fi
-		yum -y install kmod-wireguard wireguard-tools iptables qrencode
-	elif [[ ${OS} == 'oracle' ]]; then
-		dnf install -y oraclelinux-developer-release-el8
-		dnf config-manager --disable -y ol8_developer
-		dnf config-manager --enable -y ol8_developer_UEKR6
-		dnf config-manager --save -y --setopt=ol8_developer_UEKR6.includepkgs='wireguard-tools*'
-		dnf install -y wireguard-tools qrencode iptables
-	elif [[ ${OS} == 'arch' ]]; then
-		pacman -Sq --needed --noconfirm wireguard-tools qrencode
-	fi
 
 	# Make sure the directory exists (this does not seem the be the case on fedora)
 	mkdir -p "$(pwd)"/wireguard/"${SERVER_WG_NIC}"/mikrotik >/dev/null 2>&1
@@ -214,7 +218,7 @@ function newClient() {
 	if [[ ${DOT_EXISTS} == '1' ]]; then
 		echo ""
 		echo "The subnet configured supports only 253 clients."
-		exit 1
+		exit 99
 	fi
 
 	BASE_IP=$(echo "$SERVER_WG_IPV4" | awk -F '.' '{ print $1"."$2"."$3 }')
@@ -320,13 +324,17 @@ function manageMenu() {
 	esac
 }
 
-# Check for root, virt, OS...
-initialCheck
+#? Check for root, OS, WireGuard
+installCheck 
 
-# Check if WireGuard is already installed and load params
+#? Check server exist
+serverName
+
+#? Check if WireGuard is already installed and load params
 if [[ -e $(pwd)/wireguard/${SERVER_WG_NIC}/params ]]; then
+	# shellcheck source=/dev/null
 	source "$(pwd)/wireguard/${SERVER_WG_NIC}/params"
 	manageMenu
 else
-	installWireGuard
+	newInterface
 fi
