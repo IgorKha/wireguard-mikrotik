@@ -38,7 +38,7 @@ curl -O https://raw.githubusercontent.com/IgorKha/wireguard-mikrotik/master/wire
 chmod +x wireguard-mikrotik.sh
 ./wireguard-mikrotik.sh
 ```
-After run, script will be create folder "wireguard" with your configurations
+Once run, the script will create a "wireguard" folder with your settings.
 
 Run the script again to add clients (enter exist interface name) or create new server (enter new interface name)!
 
