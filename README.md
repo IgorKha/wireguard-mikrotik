@@ -11,14 +11,14 @@ The script supports both IPv4 and IPv6. Please check the [issues](https://github
 
 Part of this script based on [this repo](https://github.com/angristan/wireguard-install)
 
+See mesurements your MikroTik in [Grafana-MikroTik](https://github.com/IgorKha/Grafana-Mikrotik)
+
 ## Requirements
 
 Packages:
 
-- wireguard
+- wireguard-tools
 - qrencode
-- iptables (optional)
-- resolvconf (optional)
 
 Supported distributions:
 
@@ -38,8 +38,7 @@ curl -O https://raw.githubusercontent.com/IgorKha/wireguard-mikrotik/master/wire
 chmod +x wireguard-mikrotik.sh
 ./wireguard-mikrotik.sh
 ```
-
-It will install WireGuard (kernel module and tools), create a server configuration file (MikroTik) and a client configuration file.
+After run, script will be create folder "wireguard" with your configurations
 
 Run the script again to add clients (enter exist interface name) or create new server (enter new interface name)!
 
