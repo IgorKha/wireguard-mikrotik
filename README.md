@@ -42,6 +42,8 @@ Once run, the script will create a "wireguard" folder with your settings.
 
 Run the script again to add clients (enter exist interface name) or create new server (enter new interface name)!
 
+[![asciicast](https://asciinema.org/a/64wco1fA8k251anGsSQDcH9jW.svg)](https://asciinema.org/a/64wco1fA8k251anGsSQDcH9jW)
+
 ## Structure
 
 ```text
