@@ -42,7 +42,7 @@ function installWireGuard() {
 		echo "Looks like you aren't running this installer on a Debian, Ubuntu, Fedora, CentOS, Oracle or Arch Linux system"
 		exit 95
 	fi
-    
+
 	#? Install WireGuard tools and module
 	if [[ ${OS} == 'ubuntu' ]] || [[ ${OS} == 'debian' && ${VERSION_ID} -gt 10 ]]; then
 		apt-get update
@@ -254,7 +254,7 @@ function newClient() {
 
     mkdir -p "$(pwd)/wireguard/${SERVER_WG_NIC}/client/${CLIENT_NAME}" >/dev/null 2>&1
 	HOME_DIR="$(pwd)/wireguard/${SERVER_WG_NIC}/client/${CLIENT_NAME}"
-	
+
 	# Create client file and add the server as a peer
 	echo "[Interface]
 PrivateKey = ${CLIENT_PRIV_KEY}
@@ -325,7 +325,7 @@ function manageMenu() {
 }
 
 #? Check for root, OS, WireGuard
-installCheck 
+installCheck
 
 #? Check server exist
 serverName

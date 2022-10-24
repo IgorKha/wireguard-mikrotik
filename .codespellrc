@@ -1,0 +1,9 @@
+[codespell]
+builtin = clear,rare,names,code,en-GB_to_en-US
+check-filenames =
+context = 2
+enable-colors = true
+quiet-level = 3
+# TODO Add _false positives_ to the ignore list below
+# ignore-words-list =
+skip = .extras,.git,.password-store,.venv,build,Pipfile

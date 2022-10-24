@@ -1,0 +1,32 @@
+
+#---------------------------------------------------------------------
+# Format for the commit title (the very first line) is the following:
+#
+# <type>: (If applied, this commit will...) <subject> (max 72 chars)
+#
+# Where `<type>` is one of the following:
+#   - build         = Changes to the build system
+#   - ci            = CI related changes (GH actions, hooks, ...)
+#   - docs          = Changes to the documentation/manuals
+#   - feat          = The commit introduces a new feature
+#   - fix           = The commit fixes a bug/regression/typo
+#   - impr          = The commit bring some improvements
+#   - misc          = Other actions
+#   - package       = Changes to the package produced
+#   - refactor      = The commit performs a refactoring
+#   - release       = The commit prepares a repo for release
+#   - style         = The commit fixes formatting
+#   - testing       = Changes to the tests or testing process
+#   - wip           = Work In Progress
+#
+# About conventional commits: https://www.conventionalcommits.org
+#---------------------------------------------------------------------
+# NOTE: Leave the next line empty to separate title from the body
+
+# Explain why this change is being made below... (max 120 chars per line)
+
+
+# Optionally provide links or keys to any relevant tickets, articles or other resources.
+# See also: https://confluence.atlassian.com/fisheye/using-smart-commits-960155400.html
+
+#---[Git inserted text goes blow]-------------------------------------

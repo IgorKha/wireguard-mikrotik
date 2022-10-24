@@ -1,0 +1,32 @@
+name: Pre-commit auto-update
+
+on:
+  # every Sunday at midnight
+  schedule:
+    - cron: "0 0 * * 0"
+  # on demand
+  workflow_dispatch:
+
+jobs:
+  auto-update:
+    name: Checking `pre-commit` hooks updates
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Prepare Python Environment
+        uses: actions/setup-python@v2
+
+      - name: Pre-installing requirements
+        uses: browniebroke/pre-commit-autoupdate-action@main
+
+      - name: Create PR to Update configs
+        uses: peter-evans/create-pull-request@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: update/pre-commit-hooks
+          title: 'misc: Version bump `pre-commit` hook plugins'
+          commit-message: 'misc: Version bump `pre-commit` hook plugins'
+          body: Update plugins of `pre-commit` hooks to latest version.

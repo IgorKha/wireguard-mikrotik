@@ -1,0 +1,29 @@
+name: Checking `pre-commit` hooks
+
+on:
+  push:
+    branches:
+      - master
+
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  pr-checks:
+    name: Checking `pre-commit` hooks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Check the `pre-commit` hook configuration presence
+        id: check_files
+        uses: andstor/file-existence-action@v1
+        with:
+          files: .pre-commit-config.yaml
+
+      - name: Checking configured hooks
+        if: steps.check_files.outputs.files_exists == 'true'
+        uses: pre-commit/action@v2.0.3

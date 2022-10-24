@@ -1,0 +1,45 @@
+# Read the docs here: https://pre-commit.com and http://jorisroovers.github.io/gitlint/
+# Install hooks to your clone:
+#   $ pre-commit install --install-hooks
+# and
+#   $ pre-commit install --install-hooks -t commit-msg
+
+default_stages: [commit]
+fail_fast: false
+repos:
+  - repo: meta
+    hooks:
+      - id: check-hooks-apply
+      - id: check-useless-excludes
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.3.0
+    hooks:
+      - id: check-case-conflict
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+
+  - repo: https://github.com/jorisroovers/gitlint
+    rev: v0.17.0
+    hooks:
+      - id: gitlint
+        name: Commit message check
+        language: python
+        entry: gitlint --msg-filename
+        stages: [commit-msg]
+
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.2.2
+    hooks:
+      - id: codespell
+
+  - repo: https://github.com/koalaman/shellcheck-precommit
+    rev: v0.8.0
+    hooks:
+      - id: shellcheck
+        args: ['--shell=bash', '--color=always']
+        files: '\.sh$'
+        types: ['file', 'text']
+
+# kate: indent-width 2; tab-width 2;
