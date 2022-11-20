@@ -56,7 +56,7 @@ Run the script again to add clients (enter exist interface name) or create new s
 │   │   │       ├── wg0-client-user1.conf - config file for your client
 │   │   │       └── wg0-client-user1.png - and QR client config
 │   │   ├── mikrotik
-│   │   │   └── wg0.rsc - past in your mikrotik console
+│   │   │   └── wg0.rsc - paste in your mikrotik console
 │   │   ├── params
 │   │   └── wg0.conf
 │   └── wg1 - WireGuard interface name (server name)
