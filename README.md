@@ -2,16 +2,15 @@
 
 ![visitors](https://visitor-badge.laobi.icu/badge?page_id=IgorKha.wireguard-mikrotik)
 
-**This project is a bash script that aims to configure a [WireGuard](https://www.wireguard.com/) VPN on a MikroTik, as easily as possible!**
+**This project is a bash script designed to simplify the configuration of a [WireGuard](https://www.wireguard.com/) VPN on a MikroTik device.**
 
-WireGuard is a point-to-point VPN that can be used in different ways. Here, we mean a VPN as in: the client will forward all its traffic through an encrypted tunnel to the server.
-The server will apply NAT to the client's traffic so it will appear as if the client is browsing the web with the server's IP.
+WireGuard is a point-to-point VPN protocol that offers various usage possibilities. In this context, we refer to a VPN where the client's traffic is securely tunneled to the server. The server applies NAT to the client's traffic, making it appear as though the client is accessing the internet using the server's IP address.
 
-The script supports both IPv4 and IPv6. Please check the [issues](https://github.com/IgorKha/wireguard-mikrotik/issues) for ongoing development, bugs and planned features!
+The script fully supports both IPv4 and IPv6. Please refer to the [issues](https://github.com/IgorKha/wireguard-mikrotik/issues) section for ongoing development, bug reports, and planned features.
 
-Part of this script based on [this repo](https://github.com/angristan/wireguard-install)
+A portion of this script is based on the following repository: [wireguard-install](https://github.com/angristan/wireguard-install)
 
-See measurements your MikroTik in [Grafana-MikroTik](https://github.com/IgorKha/Grafana-Mikrotik)
+For monitoring the performance of your MikroTik device, you can use [Grafana-MikroTik](https://github.com/IgorKha/Grafana-Mikrotik) to visualize measurements.
 
 ## Requirements
 
