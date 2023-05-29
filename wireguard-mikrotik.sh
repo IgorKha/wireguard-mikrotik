@@ -96,9 +96,6 @@ function serverName() {
 }
 
 function installQuestions() {
-	echo "Welcome to WireGuard-MikroTik configurator!"
-	echo "The git repository is available at: https://github.com/IgorKha/wireguard-mikrotik"
-	echo ""
 	echo "I need to ask you a few questions before starting the setup."
 	echo "You can leave the default options and just press enter if you are ok with them."
 	echo ""
@@ -303,8 +300,6 @@ AllowedIPs = ${CLIENT_WG_IPV4}/32,${CLIENT_WG_IPV6}/128" >>"$(pwd)/wireguard/${S
 }
 
 function manageMenu() {
-	echo "Welcome to WireGuard-MikroTik configurator!"
-	echo "The git repository is available at: https://github.com/IgorKha/wireguard-mikrotik"
 	echo ""
 	echo "It looks like this WireGuard interface is already."
 	echo ""
@@ -324,8 +319,35 @@ function manageMenu() {
 	esac
 }
 
+#? List of existing configurations
+function listConfs() {
+	local directory
+	directory="$(pwd)/wireguard"
+
+	if [ -d "${directory}" ]; then
+		echo "List of existing configurations:"
+		i=1
+		for folder in "${directory}"/*/; do
+			local users count folder_name
+			users="${folder}/client/"
+			count=$(find "$users" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | wc -l)
+			folder_name=$(basename "${folder}")
+			echo "${i}. ${folder_name} [${count} user(s)]"
+			((i++))
+		done
+  	fi
+	echo ""
+}
+
+echo ""
+echo "Welcome to WireGuard-MikroTik configurator!"
+echo "The git repository is available at: https://github.com/IgorKha/wireguard-mikrotik"
+echo ""
+
 #? Check for root, OS, WireGuard
 installCheck
+
+listConfs
 
 #? Check server exist
 serverName
