@@ -13,7 +13,7 @@ repos:
       - id: check-useless-excludes
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.3.0
+    rev: v4.4.0
     hooks:
       - id: check-case-conflict
       - id: check-yaml
@@ -21,7 +21,7 @@ repos:
       - id: trailing-whitespace
 
   - repo: https://github.com/jorisroovers/gitlint
-    rev: v0.17.0
+    rev: v0.19.1
     hooks:
       - id: gitlint
         name: Commit message check
@@ -30,12 +30,12 @@ repos:
         stages: [commit-msg]
 
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.2.2
+    rev: v2.2.4
     hooks:
       - id: codespell
 
   - repo: https://github.com/koalaman/shellcheck-precommit
-    rev: v0.8.0
+    rev: v0.9.0
     hooks:
       - id: shellcheck
         args: ['--shell=bash', '--color=always']
