@@ -101,7 +101,7 @@ function installQuestions() {
 	echo ""
 
 	# Detect public IPv4 or IPv6 address and pre-fill for the user
-    SERVER_PUB_IP=$(dig +short myip.opendns.com @resolver1.opendns.com)
+    SERVER_PUB_IP=$(host myip.opendns.com resolver1.opendns.com | grep -oP 'has address \K[0-9.]+')
     if [[ -z ${SERVER_PUB_IP} ]]; then
             # Detect public IPv6 address
             SERVER_PUB_IP=$(ip -6 addr | sed -ne 's|^.* inet6 \([^/]*\)/.* scope global.*$|\1|p' | head -1)
