@@ -106,7 +106,19 @@ function installQuestions() {
             # Detect public IPv6 address
             SERVER_PUB_IP=$(ip -6 addr | sed -ne 's|^.* inet6 \([^/]*\)/.* scope global.*$|\1|p' | head -1)
     fi
-    read -rp "IPv4 or IPv6 public address: " -e -i "${SERVER_PUB_IP}" SERVER_PUB_IP
+
+	while true; do
+		read -rp "Enter IPv4 or IPv6 public address: " -e -i "${SERVER_PUB_IP}" SERVER_PUB_IP
+
+		if [[ ${SERVER_PUB_IP} =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+			break
+		elif [[ ${SERVER_PUB_IP} =~ ^[0-9a-fA-F:]+:[0-9a-fA-F:]*$ ]]; then
+			SERVER_PUB_IP="[${SERVER_PUB_IP}]"
+			break
+		else
+			echo "Invalid IP address. Please enter a valid IPv4 or IPv6 address."
+		fi
+	done
 
     until [[ ${SERVER_WG_IPV4} =~ ^([0-9]{1,3}\.){3} ]]; do
         read -rp "Server's WireGuard IPv4: " -e -i 10."$(shuf -i 0-250 -n 1)"."$(shuf -i 0-250 -n 1)".1 SERVER_WG_IPV4
