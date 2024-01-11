@@ -44,7 +44,7 @@ function checkOS() {
 function installWireGuard() {
 
 	#? Check root user
-	if [ "${EUID}" -ne 0 ]; then
+	if [[ "${EUID}" -ne 0 ]] && [[ "${OS}" != "macos" ]]; then
 		echo ""
 		echo "You need to run this script as root"
 		echo ""
