@@ -1,20 +1,14 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 BLUE='\033[0;34m'
 NC='\033[0m'
 INFO="${BLUE}[i]${NC}"
 
-function installWireGuard() {
+function checkOS() {
 
-    #? Check root user
-    if [ "${EUID}" -ne 0 ]; then
-		echo "You need to run this script as root"
-		exit 13
-	fi
-
-    #? Check OS version
-    if [[ -e /etc/debian_version ]]; then
-        # shellcheck source=/dev/null
+	#? Check OS version
+	if [[ -e /etc/debian_version ]]; then
+			# shellcheck source=/dev/null
 		source /etc/os-release
 		OS="${ID}" # debian or ubuntu
 		if [[ ${ID} == "debian" || ${ID} == "raspbian" ]]; then
@@ -38,9 +32,23 @@ function installWireGuard() {
 		OS=oracle
 	elif [[ -e /etc/arch-release ]]; then
 		OS=arch
+	elif [[ "$(uname -s)" == "Darwin" ]]; then
+    OS=macos
 	else
 		echo "Looks like you aren't running this installer on a Debian, Ubuntu, Fedora, CentOS, Oracle or Arch Linux system"
 		exit 95
+	fi
+	export OS
+}
+
+function installWireGuard() {
+
+	#? Check root user
+	if [ "${EUID}" -ne 0 ]; then
+		echo ""
+		echo "You need to run this script as root"
+		echo ""
+		exit 13
 	fi
 
 	#? Install WireGuard tools and module
@@ -76,22 +84,36 @@ function installWireGuard() {
 		dnf install -y wireguard-tools qrencode
 	elif [[ ${OS} == 'arch' ]]; then
 		pacman -Sq --needed --noconfirm wireguard-tools qrencode
+	elif [[ ${OS} == 'macos' ]]; then
+    if ! command -v brew &> /dev/null
+    then
+			echo ""
+			echo "Brew is not installed. Please install it and run this script again."
+			echo "https://brew.sh/"
+			exit 1
+    fi
+    brew install wireguard-tools qrencode
 	fi
-
+	echo ""
+	echo "The installation is complete. Now you need to re-run the script with user access rights (not root)."
+	echo ""
+	exit 0
 }
 
 function installCheck() {
 	if ! command -v wg &> /dev/null
 	then
-	    echo "You must have \"wireguard-tools\" and \"qrencode\" installed."
-    	read -n1 -r -p "Press any key to continue and install needed packages..."
+		echo "You must have \"wireguard-tools\" and \"qrencode\" installed."
+		read -n1 -r -p "Press any key to continue and install needed packages..."
 		installWireGuard
 	fi
 }
 
 function serverName() {
 	until [[ ${SERVER_WG_NIC} =~ ^[a-zA-Z0-9_]+$ && ${#SERVER_WG_NIC} -lt 16 ]]; do
-            read -rp "WireGuard interface name (server name): " -e -i wg0 SERVER_WG_NIC
+			echo "Tell me a name for the server WireGuard interface. ('wg0' is used by default)"
+			read -rp "WireGuard interface name (server name): " -e SERVER_WG_NIC
+			SERVER_WG_NIC=${SERVER_WG_NIC:-wg0}
     done
 }
 
@@ -101,15 +123,24 @@ function installQuestions() {
 	echo ""
 
 	# Detect public IPv4 or IPv6 address and pre-fill for the user
-    SERVER_PUB_IP=$(host myip.opendns.com resolver1.opendns.com | grep -oP 'has address \K[0-9.]+')
-    if [[ -z ${SERVER_PUB_IP} ]]; then
-            # Detect public IPv6 address
-            SERVER_PUB_IP=$(ip -6 addr | sed -ne 's|^.* inet6 \([^/]*\)/.* scope global.*$|\1|p' | head -1)
-    fi
+	SERVER_PUB_IP=$(host myip.opendns.com resolver1.opendns.com | grep -oE 'has address [0-9.]+' | cut -d ' ' -f3)
+	echo "Your public IPv4 address is ${SERVER_PUB_IP}"
+	if [[ -z ${SERVER_PUB_IP} ]]; then
+		# Detect public IPv6 address
+		if [[ ${OS} == "macos" ]]; then
+			# Detect public IPv6 address on macOS
+			SERVER_PUB_IP=$(ifconfig | grep -A4 'en0:' | grep 'inet6' | awk '{print $2}')
+		else
+			# Detect public IPv6 address on Linux
+			SERVER_PUB_IP=$(ip -6 addr | sed -ne 's|^.* inet6 \([^/]*\)/.* scope global.*$|\1|p' | head -1)
+		fi
+	fi
 
+	# while true; do
+	# 	read -rp "Enter IPv4 or IPv6 public address: " -e -i "${SERVER_PUB_IP}" SERVER_PUB_IP
 	while true; do
-		read -rp "Enter IPv4 or IPv6 public address: " -e -i "${SERVER_PUB_IP}" SERVER_PUB_IP
-
+    read -rp "Enter IPv4 or IPv6 public address [default used ${SERVER_PUB_IP}]: " -e USER_INPUT_SERVER_PUB_IP
+    SERVER_PUB_IP=${USER_INPUT_SERVER_PUB_IP:-$SERVER_PUB_IP}
 		if [[ ${SERVER_PUB_IP} =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
 			break
 		elif [[ ${SERVER_PUB_IP} =~ ^[0-9a-fA-F:]+:[0-9a-fA-F:]*$ ]]; then
@@ -120,36 +151,68 @@ function installQuestions() {
 		fi
 	done
 
-    until [[ ${SERVER_WG_IPV4} =~ ^([0-9]{1,3}\.){3} ]]; do
-        read -rp "Server's WireGuard IPv4: " -e -i 10."$(shuf -i 0-250 -n 1)"."$(shuf -i 0-250 -n 1)".1 SERVER_WG_IPV4
-    done
+	until [[ ${SERVER_WG_IPV4} =~ ^([0-9]{1,3}\.){3} ]]; do
+		# read -rp "Server's WireGuard IPv4: " -e -i 10."$(shuf -i 0-250 -n 1)"."$(shuf -i 0-250 -n 1)".1 SERVER_WG_IPV4
+		if [[ ${OS} == "macos" ]]; then
+			SERVER_WG_IPV4="10.$(jot -r 1 0 250).$(jot -r 1 0 250).1"
+			read -rp "Server's WireGuard IPv4 [default used ${SERVER_WG_IPV4}]: " -e USER_INPUT_SERVER_WG_IPV4
+			SERVER_WG_IPV4=${USER_INPUT_SERVER_WG_IPV4:-$SERVER_WG_IPV4}
+		else
+			read -rp "Server's WireGuard IPv4: " -e -i 10."$(shuf -i 0-250 -n 1)"."$(shuf -i 0-250 -n 1)".1 SERVER_WG_IPV4
+		fi
+	done
 
-    until [[ ${SERVER_WG_IPV6} =~ ^([a-f0-9]{1,4}:){3,4}: ]]; do
-        read -rp "Server's WireGuard IPv6: " -e -i fd42:"$(shuf -i 10-90 -n 1)":"$(shuf -i 10-90 -n 1)"::1 SERVER_WG_IPV6
-    done
+	until [[ ${SERVER_WG_IPV6} =~ ^([a-f0-9]{1,4}:){3,4}: ]]; do
+		# read -rp "Server's WireGuard IPv6: " -e -i fd42:"$(shuf -i 10-90 -n 1)":"$(shuf -i 10-90 -n 1)"::1 SERVER_WG_IPV6
+		if [[ ${OS} == 'macos' ]]; then
+			SERVER_WG_IPV6="fd42:$(jot -r 1 10 90):$(jot -r 1 10 90)::1"
+			read -rp "Server's WireGuard IPv6 [default used ${SERVER_WG_IPV6}]: " -e USER_INPUT_SERVER_WG_IPV6
+			SERVER_WG_IPV6=${USER_INPUT_SERVER_WG_IPV6:-$SERVER_WG_IPV6}
+		else
+			read -rp "Server's WireGuard IPv6: " -e -i fd42:"$(shuf -i 10-90 -n 1)":"$(shuf -i 10-90 -n 1)"::1 SERVER_WG_IPV6
+		fi
+	done
 
-    # Generate random number within private ports range
-    RANDOM_PORT=$(shuf -i49152-65535 -n1)
-    until [[ ${SERVER_PORT} =~ ^[0-9]+$ ]] && [ "${SERVER_PORT}" -ge 1 ] && [ "${SERVER_PORT}" -le 65535 ]; do
-        read -rp "Server's WireGuard port [1-65535]: " -e -i "${RANDOM_PORT}" SERVER_PORT
-    done
+	# Generate random number within private ports range
+	RANDOM_PORT=$(shuf -i 49152-65535 -n1)
+	until [[ ${SERVER_PORT} =~ ^[0-9]+$ ]] && [ "${SERVER_PORT}" -ge 1 ] && [ "${SERVER_PORT}" -le 65535 ]; do
+		# read -rp "Server's WireGuard port [1-65535]: " -e -i "${RANDOM_PORT}" SERVER_PORT
+		if [[ ${OS} == 'macos' ]]; then
+			read -rp "Server's WireGuard port [1-65535] [default ${RANDOM_PORT}]: " -e USER_INPUT_SERVER_PORT
+			SERVER_PORT=${USER_INPUT_SERVER_PORT:-$RANDOM_PORT}
+		else
+			read -rp "Server's WireGuard port [1-65535]: " -e -i "${RANDOM_PORT}" SERVER_PORT
+		fi
+	done
 
-    # Adguard DNS by default
-    until [[ ${CLIENT_DNS_1} =~ ^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$ ]]; do
-        read -rp "First DNS resolver to use for the clients: " -e -i 94.140.14.14 CLIENT_DNS_1
-    done
-    until [[ ${CLIENT_DNS_2} =~ ^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$ ]]; do
-        read -rp "Second DNS resolver to use for the clients (optional): " -e -i 94.140.15.15 CLIENT_DNS_2
-        if [[ ${CLIENT_DNS_2} == "" ]]; then
-            CLIENT_DNS_2="${CLIENT_DNS_1}"
-        fi
-    done
+	# Adguard DNS by default
+	until [[ ${CLIENT_DNS_1} =~ ^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$ ]]; do
+		# read -rp "First DNS resolver to use for the clients: " -e -i 94.140.14.14 CLIENT_DNS_1
+		if [[ ${OS} == 'macos' ]]; then
+			CLIENT_DNS_1='94.140.14.14'
+			read -rp "First DNS resolver to use for the clients [default ${CLIENT_DNS_1}]: " -e USER_INPUT_CLIENT_DNS_1
+			CLIENT_DNS_1=${USER_INPUT_CLIENT_DNS_1:-$CLIENT_DNS_1}
+		else
+			read -rp "First DNS resolver to use for the clients: " -e -i 94.140.14.14 CLIENT_DNS_1
+		fi
+	done
+	until [[ ${CLIENT_DNS_2} =~ ^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$ ]]; do
+		if [[ ${OS} == 'macos' ]]; then
+			CLIENT_DNS_DEF_2='94.140.15.15'
+			read -rp "Second DNS resolver to use for the clients (optional) [default ${CLIENT_DNS_DEF_2}]: " -e USER_INPUT_CLIENT_DNS_2
+			CLIENT_DNS_2=${USER_INPUT_CLIENT_DNS_2:-$CLIENT_DNS_DEF_2}
+		else
+			read -rp "Second DNS resolver to use for the clients (optional): " -e -i 94.140.15.15 CLIENT_DNS_2
+			if [[ ${CLIENT_DNS_2} == "" ]]; then
+				CLIENT_DNS_2="${CLIENT_DNS_1}"
+			fi
+		fi
+	done
 
-    echo ""
-    echo "Okay, that was all I needed. We are ready to setup your WireGuard server now."
-    echo "You will be able to generate a client at the end of the installation."
-    read -n1 -r -p "Press any key to continue..."
-
+	echo ""
+	echo "Okay, that was all I needed. We are ready to setup your WireGuard server now."
+	echo "You will be able to generate a client at the end of the installation."
+	read -n1 -r -p "Press any key to continue..."
 }
 
 function newInterface() {
@@ -218,7 +281,11 @@ function newClient() {
 	done
 
 	for DOT_IP in {2..254}; do
-		DOT_EXISTS=$(grep -c "${SERVER_WG_IPV4::-1}${DOT_IP}" "$(pwd)/wireguard/${SERVER_WG_NIC}/${SERVER_WG_NIC}.conf")
+		if [[ ${OS} == 'macos' ]]; then
+			DOT_EXISTS=$(grep -c "$(echo "${SERVER_WG_IPV4}" | rev | cut -c 2- | rev)${DOT_IP}" "$(pwd)/wireguard/${SERVER_WG_NIC}/${SERVER_WG_NIC}.conf")
+		else
+			DOT_EXISTS=$(grep -c "${SERVER_WG_IPV4::-1}${DOT_IP}" "$(pwd)/wireguard/${SERVER_WG_NIC}/${SERVER_WG_NIC}.conf")
+		fi
 		if [[ ${DOT_EXISTS} == '0' ]]; then
 			break
 		fi
@@ -232,7 +299,12 @@ function newClient() {
 
 	BASE_IP=$(echo "$SERVER_WG_IPV4" | awk -F '.' '{ print $1"."$2"."$3 }')
 	until [[ ${IPV4_EXISTS} == '0' ]]; do
-		read -rp "Client's WireGuard IPv4: ${BASE_IP}." -e -i "${DOT_IP}" DOT_IP
+		if [[ ${OS} == 'macos' ]]; then
+			read -rp "Client's WireGuard IPv4 [default used ${BASE_IP}.${DOT_IP}]: " -e USER_INPUT_DOT_IP
+			DOT_IP=${USER_INPUT_DOT_IP:-$DOT_IP}
+		else
+			read -rp "Client's WireGuard IPv4: ${BASE_IP}." -e -i "${DOT_IP}" DOT_IP
+		fi
 		CLIENT_WG_IPV4="${BASE_IP}.${DOT_IP}"
 		IPV4_EXISTS=$(grep -c "$CLIENT_WG_IPV4/24" "$(pwd)/wireguard/${SERVER_WG_NIC}/${SERVER_WG_NIC}.conf")
 
@@ -245,7 +317,12 @@ function newClient() {
 
 	BASE_IP=$(echo "$SERVER_WG_IPV6" | awk -F '::' '{ print $1 }')
 	until [[ ${IPV6_EXISTS} == '0' ]]; do
-		read -rp "Client's WireGuard IPv6: ${BASE_IP}::" -e -i "${DOT_IP}" DOT_IP
+		if [[ ${OS} == 'macos' ]]; then
+			read -rp "Client's WireGuard IPv6 [default used ${BASE_IP}::${DOT_IP}]: " -e USER_INPUT_DOT_IP
+			DOT_IP=${USER_INPUT_DOT_IP:-$DOT_IP}
+		else
+			read -rp "Client's WireGuard IPv6: ${BASE_IP}::" -e -i "${DOT_IP}" DOT_IP
+		fi
 		CLIENT_WG_IPV6="${BASE_IP}::${DOT_IP}"
 		IPV6_EXISTS=$(grep -c "${CLIENT_WG_IPV6}/64" "$(pwd)/wireguard/${SERVER_WG_NIC}/${SERVER_WG_NIC}.conf")
 
@@ -258,11 +335,23 @@ function newClient() {
 
 	# Asking for client's allowed IPs
 	until [[ ${ALLOWED_IPV4} =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}(\/([0-9]|[1-2][0-9]|3[0-2]))?$ ]]; do
-		read -rp "Client's allowed IPv4: " -e -i "0.0.0.0/0" ALLOWED_IPV4
+		if [[ ${OS} == 'macos' ]]; then
+			ALLOWED_IPV4="0.0.0.0/0"
+			read -rp "Client's allowed IPv4 [default used ${ALLOWED_IPV4}]: " -e USER_INPUT_ALLOWED_IPV4
+			ALLOWED_IPV4=${USER_INPUT_ALLOWED_IPV4:-$ALLOWED_IPV4}
+		else
+			read -rp "Client's allowed IPv4: " -e -i "0.0.0.0/0" ALLOWED_IPV4
+		fi
 	done
 
 	until [[ ${ALLOWED_IPV6} =~ ^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))(\/((1(1[0-9]|2[0-8]))|([0-9][0-9])|([0-9])))?$ ]]; do
-		read -rp "Client's allowed IPv6: " -e -i "::/0" ALLOWED_IPV6
+		if [[ ${OS} == 'macos' ]]; then
+			ALLOWED_IPV6="::/0"
+			read -rp "Client's allowed IPv6 [default used ${ALLOWED_IPV6}]: " -e USER_INPUT_ALLOWED_IPV6
+			ALLOWED_IPV6=${USER_INPUT_ALLOWED_IPV6:-$ALLOWED_IPV6}
+		else
+			read -rp "Client's allowed IPv6: " -e -i "::/0" ALLOWED_IPV6
+		fi
 	done
 
 	# Generate key pair for the client
@@ -313,10 +402,10 @@ AllowedIPs = ${CLIENT_WG_IPV4}/32,${CLIENT_WG_IPV6}/128" >>"$(pwd)/wireguard/${S
 	echo -e "\nHere is your client config file as a QR Code:"
 
 	qrencode -t ansiutf8 -l L <"${HOME_DIR}/${SERVER_WG_NIC}-client-${CLIENT_NAME}.conf"
-    qrencode -l L -s 6 -d 225 -o "${HOME_DIR}/${SERVER_WG_NIC}-client-${CLIENT_NAME}.png" <"${HOME_DIR}/${SERVER_WG_NIC}-client-${CLIENT_NAME}.conf"
+	qrencode -l L -s 6 -d 225 -o "${HOME_DIR}/${SERVER_WG_NIC}-client-${CLIENT_NAME}.png" <"${HOME_DIR}/${SERVER_WG_NIC}-client-${CLIENT_NAME}.conf"
 
 	echo -e "${INFO} Config available in ${HOME_DIR}/${SERVER_WG_NIC}-client-${CLIENT_NAME}.conf"
-    echo -e "${INFO} QR is also available in ${HOME_DIR}/${SERVER_WG_NIC}-client-${CLIENT_NAME}.png"
+	echo -e "${INFO} QR is also available in ${HOME_DIR}/${SERVER_WG_NIC}-client-${CLIENT_NAME}.png"
 	echo -e "${INFO} MikroTik peer config available in ${HOME_DIR}/mikrotik-${SERVER_WG_NIC}-client-${CLIENT_NAME}.rsc"
 }
 
@@ -356,7 +445,7 @@ function listConfs() {
 			echo "${i}. ${folder_name} [${count} user(s)]"
 			((i++))
 		done
-  	fi
+	fi
 	echo ""
 }
 
@@ -365,7 +454,11 @@ echo "Welcome to WireGuard-MikroTik configurator!"
 echo "The git repository is available at: https://github.com/IgorKha/wireguard-mikrotik"
 echo ""
 
-#? Check for root, OS, WireGuard
+#? Check OS
+checkOS
+echo "Your OS is ${OS}"
+
+#? Check for root, WireGuard
 installCheck
 
 listConfs

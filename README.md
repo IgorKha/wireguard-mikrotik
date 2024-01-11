@@ -27,6 +27,7 @@ Supported distributions:
 - CentOS
 - Arch Linux
 - Oracle Linux
+- macOS (experimental) [**requires** [**brew**](https://brew.sh) package manager]
 
 ## Usage
 
