@@ -35,7 +35,7 @@ repos:
       - id: codespell
 
   - repo: https://github.com/koalaman/shellcheck-precommit
-    rev: v0.9.0
+    rev: v0.10.0
     hooks:
       - id: shellcheck
         args: ['--shell=bash', '--color=always']
