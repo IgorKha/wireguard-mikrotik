@@ -4,7 +4,7 @@
 # and
 #   $ pre-commit install --install-hooks -t commit-msg
 
-default_stages: [commit]
+default_stages: [pre-commit]
 fail_fast: false
 repos:
   - repo: meta
@@ -13,7 +13,7 @@ repos:
       - id: check-useless-excludes
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v5.0.0
     hooks:
       - id: check-case-conflict
       - id: check-yaml
@@ -30,7 +30,7 @@ repos:
         stages: [commit-msg]
 
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.3.0
+    rev: v2.4.0
     hooks:
       - id: codespell
 
