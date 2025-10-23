@@ -243,8 +243,7 @@ CLIENT_DNS_2=${CLIENT_DNS_2}" > "$(pwd)/wireguard/${SERVER_WG_NIC}/params"
 add listen-port=${SERVER_PORT} mtu=1420 name=${SERVER_WG_NIC} private-key=\\
     \"${SERVER_PRIV_KEY}\"
 /ip firewall filter
-add action=accept chain=input comment=wg-${SERVER_WG_NIC} dst-port=${SERVER_PORT} protocol=udp
-/ip firewall filter move [/ip firewall filter find comment=wg-${SERVER_WG_NIC}] 1
+add action=accept chain=input comment=wg-${SERVER_WG_NIC} dst-port=${SERVER_PORT} protocol=udp place-before=1
 /ip address
 add address=${SERVER_WG_IPV4}/24 comment=wg-${SERVER_WG_NIC} interface=${SERVER_WG_NIC}
     " > "$(pwd)/wireguard/${SERVER_WG_NIC}/mikrotik/${SERVER_WG_NIC}.rsc"
