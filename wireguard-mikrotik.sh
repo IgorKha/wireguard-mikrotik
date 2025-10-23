@@ -136,29 +136,31 @@ function installQuestions() {
 		fi
 	fi
 
-	# while true; do
-	# 	read -rp "Enter IPv4 or IPv6 public address: " -e -i "${SERVER_PUB_IP}" SERVER_PUB_IP
 	while true; do
-    read -rp "Enter IPv4 or IPv6 public address [default used ${SERVER_PUB_IP}]: " -e USER_INPUT_SERVER_PUB_IP
-    SERVER_PUB_IP=${USER_INPUT_SERVER_PUB_IP:-$SERVER_PUB_IP}
-		if [[ ${SERVER_PUB_IP} =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+		read -rp "Enter IPv4, IPv6 public address or FQDN [default used ${SERVER_PUB_IP}]: " -e USER_INPUT_SERVER_PUB_IP
+		SERVER_PUB_IP=${USER_INPUT_SERVER_PUB_IP:-$SERVER_PUB_IP}
+		if [[ ${SERVER_PUB_IP} =~ ^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$ ]]; then
 			break
-		elif [[ ${SERVER_PUB_IP} =~ ^[0-9a-fA-F:]+:[0-9a-fA-F:]*$ ]]; then
+		elif [[ ${SERVER_PUB_IP} =~ ^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$ ]]; then
 			SERVER_PUB_IP="[${SERVER_PUB_IP}]"
 			break
+		elif [[ ${SERVER_PUB_IP} =~ ^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$ ]]; then
+			break
 		else
-			echo "Invalid IP address. Please enter a valid IPv4 or IPv6 address."
+			echo "Invalid input. Please enter a valid IPv4, IPv6 address or FQDN (e.g., example.com, MySerial.sn.mynetname.net)."
 		fi
 	done
 
-	until [[ ${SERVER_WG_IPV4} =~ ^([0-9]{1,3}\.){3} ]]; do
-		# read -rp "Server's WireGuard IPv4: " -e -i 10."$(shuf -i 0-250 -n 1)"."$(shuf -i 0-250 -n 1)".1 SERVER_WG_IPV4
+	until [[ ${SERVER_WG_IPV4} =~ ^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$ ]]; do
 		if [[ ${OS} == "macos" ]]; then
 			SERVER_WG_IPV4="10.$(jot -r 1 0 250).$(jot -r 1 0 250).1"
 			read -rp "Server's WireGuard IPv4 [default used ${SERVER_WG_IPV4}]: " -e USER_INPUT_SERVER_WG_IPV4
 			SERVER_WG_IPV4=${USER_INPUT_SERVER_WG_IPV4:-$SERVER_WG_IPV4}
 		else
 			read -rp "Server's WireGuard IPv4: " -e -i 10."$(shuf -i 0-250 -n 1)"."$(shuf -i 0-250 -n 1)".1 SERVER_WG_IPV4
+		fi
+		if [[ ! ${SERVER_WG_IPV4} =~ ^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$ ]]; then
+			echo "Invalid IPv4 address. Each octet must be 0-255."
 		fi
 	done
 
@@ -174,7 +176,11 @@ function installQuestions() {
 	done
 
 	# Generate random number within private ports range
-	RANDOM_PORT=$(shuf -i 49152-65535 -n1)
+	if [[ ${OS} == 'macos' ]]; then
+		RANDOM_PORT=$(jot -r 1 49152 65535)
+	else
+		RANDOM_PORT=$(shuf -i 49152-65535 -n1)
+	fi
 	until [[ ${SERVER_PORT} =~ ^[0-9]+$ ]] && [ "${SERVER_PORT}" -ge 1 ] && [ "${SERVER_PORT}" -le 65535 ]; do
 		# read -rp "Server's WireGuard port [1-65535]: " -e -i "${RANDOM_PORT}" SERVER_PORT
 		if [[ ${OS} == 'macos' ]]; then
@@ -376,19 +382,21 @@ AllowedIPs = ${ALLOWED_IPV4},${ALLOWED_IPV6}" >>"${HOME_DIR}/${SERVER_WG_NIC}-cl
     # Add the client as a peer to the MikroTik (to client folder)
     echo "# WireGuard client peer configure
 /interface wireguard peers
-add allowed-address=${CLIENT_WG_IPV4}/32 comment=\\
-    ${SERVER_WG_NIC}-client-${CLIENT_NAME} interface=${SERVER_WG_NIC} \\
-    preshared-key=\"${CLIENT_PRE_SHARED_KEY}\" public-key=\\
-    \"${CLIENT_PUB_KEY}\"
+add allowed-address=${CLIENT_WG_IPV4}/32 comment=${SERVER_WG_NIC}-client-${CLIENT_NAME}\\
+	name=\"${SERVER_WG_NIC}-${CLIENT_NAME}\"\\
+	interface=\"${SERVER_WG_NIC}\"\
+    preshared-key=\"${CLIENT_PRE_SHARED_KEY}\"\\ public-key=\"${CLIENT_PUB_KEY}\"\\
+	private-key=\"${CLIENT_PRIV_KEY}\"
     " >"${HOME_DIR}/mikrotik-peer-${SERVER_WG_NIC}-client-${CLIENT_NAME}.rsc"
 
     # Add the client as a peer to the MikroTik
     echo "# WireGuard client peer configure
 /interface wireguard peers
-add allowed-address=${CLIENT_WG_IPV4}/32 comment=\\
-    ${SERVER_WG_NIC}-client-${CLIENT_NAME} interface=${SERVER_WG_NIC} \\
-    preshared-key=\"${CLIENT_PRE_SHARED_KEY}\" public-key=\\
-    \"${CLIENT_PUB_KEY}\"
+add allowed-address=${CLIENT_WG_IPV4}/32 comment=${SERVER_WG_NIC}-client-${CLIENT_NAME}\\
+	name=\"${SERVER_WG_NIC}-${CLIENT_NAME}\"\\
+	interface=\"${SERVER_WG_NIC}\"\
+    preshared-key=\"${CLIENT_PRE_SHARED_KEY}\"\\ public-key=\"${CLIENT_PUB_KEY}\"\\
+	private-key=\"${CLIENT_PRIV_KEY}\"
     " >> "$(pwd)/wireguard/${SERVER_WG_NIC}/mikrotik/${SERVER_WG_NIC}.rsc"
 
 	# Add the client as a peer to the server
@@ -449,7 +457,8 @@ function listConfs() {
 }
 
 echo ""
-echo "Welcome to WireGuard-MikroTik configurator!"
+echo "Welcome to WireGuard-MikroTik configurator! v1.0.0"
+echo "This script will help you to create WireGuard server and client configurations for MikroTik routers."
 echo "The git repository is available at: https://github.com/IgorKha/wireguard-mikrotik"
 echo ""
 
