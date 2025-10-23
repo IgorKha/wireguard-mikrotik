@@ -110,7 +110,7 @@ function installCheck() {
 }
 
 function serverName() {
-	until [[ ${SERVER_WG_NIC} =~ ^[a-zA-Z0-9_]+$ && ${#SERVER_WG_NIC} -lt 16 ]]; do
+	until [[ ${SERVER_WG_NIC} =~ ^[a-zA-Z0-9_-]+$ && ${#SERVER_WG_NIC} -lt 16 ]]; do
 			echo "Tell me a name for the server WireGuard interface. ('wg0' is used by default)"
 			read -rp "WireGuard interface name (server name): " -e SERVER_WG_NIC
 			SERVER_WG_NIC=${SERVER_WG_NIC:-wg0}
